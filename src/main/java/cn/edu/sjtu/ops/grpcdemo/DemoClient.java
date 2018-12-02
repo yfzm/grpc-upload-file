@@ -47,7 +47,7 @@ public class DemoClient {
         channel.shutdown().awaitTermination(5, TimeUnit.SECONDS);
     }
 
-    public void uploadFile(String filename, int chunkSize) throws InterruptedException {
+    public void uploadFile(String filename, final int chunkSize) throws InterruptedException {
         final CountDownLatch finishLatch = new CountDownLatch(1);
         StreamObserver<UploadStatus> responseObserver = new StreamObserver<UploadStatus>() {
             public void onNext(UploadStatus uploadStatus) {
@@ -59,13 +59,13 @@ public class DemoClient {
             }
 
             public void onCompleted() {
-                logger.info("finish upload");
+                logger.info("finish upload (chunk size: " + String.valueOf(chunkSize) + ")");
                 System.out.println("uploadFile Completed!");
                 finishLatch.countDown();
             }
         };
 
-        logger.info("start upload");
+        logger.info("start upload (chunk size: " + String.valueOf(chunkSize) + ")");
         StreamObserver<Chunk> requestObserver = asyncStub.upload(responseObserver);
         try {
             FileInputStream is = new FileInputStream(new File("src/main/resources/" + filename));
@@ -106,10 +106,11 @@ public class DemoClient {
     }
 
     public static void main(String[] args) throws InterruptedException, IOException {
+        int chunkSize = Integer.parseInt(args[0]);
         DemoClient client = new DemoClient("localhost", 8980);
 //        client.uploadFile("testfile.txt", 10);
         Date start = new Date();
-        client.uploadFile("file-100M", 2 * 1024 * 1024);
+        client.uploadFile("file-100M", chunkSize);
         Date end = new Date();
         float diff = end.getTime() - start.getTime();
         System.out.println(String.valueOf(diff / 1000) + "s");

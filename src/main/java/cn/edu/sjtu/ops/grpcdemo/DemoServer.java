@@ -5,7 +5,6 @@ import io.grpc.ServerBuilder;
 import io.grpc.stub.StreamObserver;
 
 import java.io.*;
-import java.util.Arrays;
 import java.util.UUID;
 import java.util.logging.*;
 
@@ -88,9 +87,10 @@ public class DemoServer {
             return new StreamObserver<Chunk>() {
                 ByteArrayOutputStream bos = new ByteArrayOutputStream(CHUNKSIZE);
                 String filename = UUID.randomUUID().toString();
-//                int count = 0;
+                int count = 0;
                 public void onNext(Chunk chunk) {
-                    logger.info("start receiving chunk");
+                    count++;
+                    logger.info("chunk-" + String.valueOf(count) + " start");
 //                    count += 1;
 //                    if (count % 1 == 0)
 //                        System.out.println(String.valueOf(count));
@@ -131,8 +131,7 @@ public class DemoServer {
                             }
                         }
                     }
-                    logger.info("finishing receiving chunk");
-
+                    logger.info("chunk-" + String.valueOf(count) + " finish");
                 }
 
 
@@ -168,13 +167,11 @@ public class DemoServer {
 //                        }
 //                    }
                     System.out.println("complete!!!!!");
-                    logger.info("complete\n");
+                    logger.info("File Transfer Completed\n");
                     responseObserver.onNext(UploadStatus.newBuilder().setCodeValue(1).build());
                     responseObserver.onCompleted();
                 }
-            }
-
-                    ;
+            };
         }
     }
 
