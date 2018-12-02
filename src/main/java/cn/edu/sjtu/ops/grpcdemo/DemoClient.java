@@ -106,11 +106,12 @@ public class DemoClient {
     }
 
     public static void main(String[] args) throws InterruptedException, IOException {
-        int chunkSize = Integer.parseInt(args[0]);
-        DemoClient client = new DemoClient("localhost", 8980);
+        String hostname = args[0];
+        int chunkSize = Integer.parseInt(args[1]);
+        DemoClient client = new DemoClient(hostname, 8980);
 //        client.uploadFile("testfile.txt", 10);
         Date start = new Date();
-        client.uploadFile("file-100M", chunkSize);
+        client.uploadFile("file-100M", chunkSize * 1024);
         Date end = new Date();
         float diff = end.getTime() - start.getTime();
         System.out.println(String.valueOf(diff / 1000) + "s");
