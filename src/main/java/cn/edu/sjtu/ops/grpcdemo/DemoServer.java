@@ -7,15 +7,26 @@ import io.grpc.stub.StreamObserver;
 import java.io.*;
 import java.util.Arrays;
 import java.util.UUID;
+import java.util.logging.*;
 
 public class DemoServer {
 
     private final int port;
     private final Server server;
+    private static Logger logger;
 
     private static final int CHUNKSIZE = 1;
 
-    public DemoServer(int port) {
+    public DemoServer(int port) throws IOException {
+        logger = Logger.getLogger("logger.info");
+        logger.setLevel(Level.INFO);
+
+        File logFile = new File("src/main/log/server.log");
+        FileHandler fileHandler = new FileHandler(logFile.getAbsolutePath(), 10240, 1, true);
+        fileHandler.setLevel(Level.INFO);
+        fileHandler.setFormatter(new MyLogFormatter());
+        logger.addHandler(fileHandler);
+
         this.port = port;
         ServerBuilder sb = ServerBuilder.forPort(port);
         this.server = sb.addService(new DemoService()).build();
@@ -25,6 +36,8 @@ public class DemoServer {
      * Start serving requests.
      */
     public void start() throws IOException {
+        logger.info("************ START *************");
+
         server.start();
         System.out.println("Server started, listening on " + port);
         Runtime.getRuntime().addShutdownHook(new Thread() {
@@ -45,6 +58,7 @@ public class DemoServer {
         if (server != null) {
             server.shutdown();
         }
+        logger.info("************ FINISH ************");
     }
 
     /**
@@ -60,9 +74,12 @@ public class DemoServer {
      * Main method.  This comment makes the linter happy.
      */
     public static void main(String[] args) throws Exception {
+
+
         DemoServer server = new DemoServer(8980);
         server.start();
         server.blockUntilShutdown();
+
     }
 
     public static class DemoService extends DemoServiceGrpc.DemoServiceImplBase {
@@ -71,11 +88,12 @@ public class DemoServer {
             return new StreamObserver<Chunk>() {
                 ByteArrayOutputStream bos = new ByteArrayOutputStream(CHUNKSIZE);
                 String filename = UUID.randomUUID().toString();
-                int count = 0;
+//                int count = 0;
                 public void onNext(Chunk chunk) {
-                    count += 1;
-                    if (count % 1 == 0)
-                        System.out.println(String.valueOf(count));
+                    logger.info("start receiving chunk");
+//                    count += 1;
+//                    if (count % 1 == 0)
+//                        System.out.println(String.valueOf(count));
 //                    BufferedInputStream bis = new BufferedInputStream(chunk.getContent().newInput());
 //                    byte[] b = new byte[CHUNKSIZE];
 //                    int n;
@@ -113,6 +131,8 @@ public class DemoServer {
                             }
                         }
                     }
+                    logger.info("finishing receiving chunk");
+
                 }
 
 
@@ -148,12 +168,20 @@ public class DemoServer {
 //                        }
 //                    }
                     System.out.println("complete!!!!!");
+                    logger.info("complete\n");
                     responseObserver.onNext(UploadStatus.newBuilder().setCodeValue(1).build());
                     responseObserver.onCompleted();
                 }
             }
 
                     ;
+        }
+    }
+
+    static class  MyLogFormatter extends Formatter {
+        @Override
+        public String format(LogRecord record) {
+            return record.getMillis() +  ": " + record.getMessage() + "\n";
         }
     }
 }

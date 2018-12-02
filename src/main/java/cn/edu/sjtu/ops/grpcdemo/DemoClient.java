@@ -10,6 +10,9 @@ import java.io.*;
 import java.util.Date;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.FileHandler;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import static cn.edu.sjtu.ops.grpcdemo.DemoServiceGrpc.newBlockingStub;
 import static cn.edu.sjtu.ops.grpcdemo.DemoServiceGrpc.newStub;
@@ -19,12 +22,22 @@ public class DemoClient {
     private final ManagedChannel channel;
     private final DemoServiceBlockingStub blockingStub;
     private final DemoServiceStub asyncStub;
+    private static Logger logger;
 
-    public DemoClient(String host, int port) {
+    public DemoClient(String host, int port) throws IOException {
         this(ManagedChannelBuilder.forAddress(host, port).usePlaintext());
     }
 
-    public DemoClient(ManagedChannelBuilder<?> channelBuilder) {
+    public DemoClient(ManagedChannelBuilder<?> channelBuilder) throws IOException {
+        logger = Logger.getLogger("logger.info");
+        logger.setLevel(Level.INFO);
+
+        File logFile = new File("src/main/log/client.log");
+        FileHandler fileHandler = new FileHandler(logFile.getAbsolutePath(), 10240, 1, true);
+        fileHandler.setLevel(Level.INFO);
+        fileHandler.setFormatter(new DemoServer.MyLogFormatter());
+        logger.addHandler(fileHandler);
+
         channel = channelBuilder.build();
         blockingStub = newBlockingStub(channel);
         asyncStub = newStub(channel);
@@ -46,11 +59,13 @@ public class DemoClient {
             }
 
             public void onCompleted() {
+                logger.info("finish upload");
                 System.out.println("uploadFile Completed!");
                 finishLatch.countDown();
             }
         };
 
+        logger.info("start upload");
         StreamObserver<Chunk> requestObserver = asyncStub.upload(responseObserver);
         try {
             FileInputStream is = new FileInputStream(new File("src/main/resources/" + filename));
@@ -61,7 +76,6 @@ public class DemoClient {
                 if (n == chunkSize) {
                     requestObserver.onNext(Chunk.newBuilder().setContent(ByteString.copyFrom(b)).build());
                 } else {
-                    System.out.println("lalala");
                     bos.write(b, 0, n);
                     requestObserver.onNext(Chunk.newBuilder().setContent(ByteString.copyFrom(bos.toByteArray())).build());
                 }
@@ -91,11 +105,11 @@ public class DemoClient {
         }
     }
 
-    public static void main(String[] args) throws InterruptedException {
+    public static void main(String[] args) throws InterruptedException, IOException {
         DemoClient client = new DemoClient("localhost", 8980);
 //        client.uploadFile("testfile.txt", 10);
         Date start = new Date();
-        client.uploadFile("file-100M", 4 * 1024 * 1024);
+        client.uploadFile("file-100M", 2 * 1024 * 1024);
         Date end = new Date();
         float diff = end.getTime() - start.getTime();
         System.out.println(String.valueOf(diff / 1000) + "s");
